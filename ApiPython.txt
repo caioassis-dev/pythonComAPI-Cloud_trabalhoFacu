@@ -1,0 +1,221 @@
+INSTALAÇÃO DE BIBLIOTECAS NECESSÁRIAS
+
+!pip install xlwt
+!pip install basedosdados
+!pip install pandas
+!pip install tabulate
+!pip install os
+!pip install openpyxl
+
+Preços de Combustíveis - Dados históricos
+Organização: Agência Nacional do Petróleo, Gás Natural e Biocombustíveis (ANP)
+Cobertura temporal : 2020 - 2021 (Mês de janeiro)
+import basedosdados as bd
+import pandas as pd
+from unidecode import unidecode
+
+# Definir a query SQL para buscar apenas os dados de janeiro de 2021
+sql_query = '''
+SELECT *
+FROM `basedosdados.br_anp_precos_combustiveis.microdados`
+WHERE (EXTRACT(YEAR FROM data_coleta) = 2020 OR EXTRACT(YEAR FROM data_coleta) = 2021)
+  AND EXTRACT(MONTH FROM data_coleta) = 1
+'''
+
+# Carregar apenas os dados filtrados para janeiro de 2021
+df = bd.read_sql(sql_query, billing_project_id="leafy-ripsaw-382815")
+Downloading: 100%|██████████| 325433/325433 [01:10<00:00, 4591.69rows/s]
+Filtrando dataFrame com colunas adequadas ao projeto, removendo colunas que não irei utilizar.
+dfcombustiveis = df.drop(['nome_estabelecimento','id_municipio','cep_revenda','cnpj_revenda','bairro_revenda','endereco_revenda','preco_compra'],axis=1)
+convertendo todas as colunas para letras minúsculas, para facilitar a busca
+dfcombustiveisLower = dfcombustiveis.applymap(lambda s: s.lower() if isinstance(s, str) else s)
+Função para remover todos os acentos de todas as palavras nas colunas do dataframe
+def remover_acentos(texto):
+    if texto is not None:
+        return unidecode(texto)
+    else:
+        return texto
+remover acentos de todas as palavras das colunas do dataframe
+colunas_selecionadas = ['bandeira_revenda', 'produto']
+dfcombustiveisLower = dfcombustiveisLower.copy()
+dfcombustiveisLower[colunas_selecionadas] = dfcombustiveisLower[colunas_selecionadas].apply(lambda col: col.map(remover_acentos) if col.dtype == object and not issubclass(col.dtype.type, pd.core.dtypes.dtypes.DatetimeTZDtype) else col)
+dfcombustiveisLower
+ano	sigla_uf	bandeira_revenda	data_coleta	produto	unidade_medida	preco_venda
+0	2021	rs	branca	2021-01-01	diesel	r$/litro	3.499
+1	2021	sp	petrobras distribuidora s.a.	2021-01-01	etanol	r$/litro	2.999
+2	2021	sp	petrobras distribuidora s.a.	2021-01-01	gasolina	r$/litro	4.279
+3	2021	sp	branca	2021-01-01	diesel s10	r$/litro	3.499
+4	2021	sp	branca	2021-01-01	diesel s10	r$/litro	3.459
+...	...	...	...	...	...	...	...
+325428	2021	mg	branca	2021-01-31	etanol	r$/litro	3.699
+325429	2021	mg	alesat	2021-01-31	gasolina	r$/litro	4.856
+325430	2021	sp	petrobras distribuidora s.a.	2021-01-31	etanol	r$/litro	3.399
+325431	2021	mg	branca	2021-01-31	diesel	r$/litro	3.865
+325432	2021	mg	alesat	2021-01-31	gasolina	r$/litro	5.080
+325433 rows × 7 columns
+
+from tabulate import tabulate
+
+# Define a lista de opções do menu
+menu = [
+    ["sigla: [1]", "Filtrar o dataframe pelas siglas - uf dos locais."],
+    ["ano: [2]", "Filtrar o dataframe pelos anos de 2020 e 2021."],
+    ["revenda: [3]", "Filtrar o dataframe pelas mais de 30 revendas."],
+    ["produto: [4]", "Filtrar o dataframe pelos produtos gasolina, etanol, diesel"]
+    
+]
+
+# Define a mensagem do cabeçalho da tabela
+header = "Digite o número da opção que você quer filtrar:"
+
+# Imprime a tabela na tela
+print(tabulate(menu, headers=[header, "Descrição de cada opção"], tablefmt="grid"))
++---------------------------------------------------+-------------------------------------------------------------+
+| Digite o número da opção que você quer filtrar:   | Descrição de cada opção                                     |
++===================================================+=============================================================+
+| sigla: [1]                                        | Filtrar o dataframe pelas siglas - uf dos locais.           |
++---------------------------------------------------+-------------------------------------------------------------+
+| ano: [2]                                          | Filtrar o dataframe pelos anos de 2020 e 2021.              |
++---------------------------------------------------+-------------------------------------------------------------+
+| revenda: [3]                                      | Filtrar o dataframe pelas mais de 30 revendas.              |
++---------------------------------------------------+-------------------------------------------------------------+
+| produto: [4]                                      | Filtrar o dataframe pelos produtos gasolina, etanol, diesel |
++---------------------------------------------------+-------------------------------------------------------------+
+Dados filtrados que estão dentro do dataframe escolhido
+Todos os dados abaixo podem ser pesquisados no DataFrame.
+Anos: 2020,2021
+UF: rs, sp, rj, mg, am, ce, df, se, ro, pb, pe, ba, pa, al, ac, es, pr, rn, pi, to, ms, mt, go, rr, sc, ap, ma
+Revendedoras: branca, petrobras, distribuidora, s.a., raizen, ipiranga, nacional, gas, butano, copagaz, liquigas, ultragaz, supergasbras, energia, consigaz, rodoil, servgas, alesat, sabba, equador, rzd, distribuidora, bahiana, setta, distribuidora, sp, dislub, amazongas, fogas, temape, atlantica, larco, minasgas, federal, simarelli, sul, combustiveis, petrox, distribuidora, stang, tobras, charrua, raizen, mime, small, taurus, royal, fic, idaza, uni, ciapetro, pelikano, potencial, ngc, distribuidora, total, brasil, tdc, distribuidora, maxsul, americanoil, rejaile, rio, branco, petrobahia, torrao, petroserra, fan, dibrape, masut, distribuidora, podium, hora, watt, ruff, walendowsky, montepetro, d`mais, gran, petro, supergasbras, dinamo, rm, petroleo, acol
+Produtos: diesel, etanol, gasolina, diesel, s10, gasolina, aditivada, gnv, glp
+Unidade de medida: R
+/
+l
+i
+t
+r
+o
+,
+R
+/m3, R$/13kg
+while True:
+    opcao = input("Qual número da opção você deseja (1, 2, 3 ou 4)? ")
+
+    if opcao.isdigit():
+        opcao = int(opcao)
+
+        if opcao in [1, 2, 3, 4]:
+            break
+
+    print("Valor inválido. Tente novamente.")
+
+if opcao == 1:
+  siglas = dfcombustiveisLower['sigla_uf'].unique()
+  siglas = siglas.tolist()
+  siglas = ", ".join(map(str,siglas))
+  sigla = input(f"Digite uma dessas siglas UF: {siglas}").lower()
+  while sigla not in siglas:
+    print("Sigla inválida. Tente novamente.")
+    sigla = input(f"Digite uma dessas siglas UF: {siglas}").lower()
+  dataframeFiltrado = dfcombustiveisLower[dfcombustiveisLower['sigla_uf'] == sigla]
+  dataframeList = dataframeFiltrado.head().values.tolist()
+  print(f"\n DataFrame - filtrado por: {sigla}\n")
+  print(tabulate(dataframeList, headers=dfcombustiveis.columns, tablefmt='grid'))
+elif opcao == 2:
+  anos = dfcombustiveisLower['ano'].unique()
+  anos = anos.tolist()
+  anos = ", ".join(map(str,anos))
+  ano = int(input(f"Digite qual desses anos você quer buscar: {anos}"))
+  while str(ano) not in anos:
+    print("Ano inválido. Tente novamente.")
+    ano = int(input(f"Digite qual desses anos você quer buscar: {anos}"))
+  dataframeFiltrado = dfcombustiveisLower[dfcombustiveisLower['ano'] == ano]
+  dataframeList = dataframeFiltrado.head().values.tolist()
+  print(f"\n DataFrame - filtrado por: {ano}\n")
+  print(tabulate(dataframeList, headers=dfcombustiveis.columns, tablefmt='grid'))
+elif opcao == 3:
+  revendas = dfcombustiveisLower['bandeira_revenda'].unique()
+  revendas = revendas.tolist()
+  revendas = ", ".join(map(str,revendas))
+  revenda = input(f"Digite qual dessas revendedoras você quer procurar: {revendas}").lower()
+  while revenda not in revendas:
+    print("Revenda inválida. Tente novamente.")
+    revenda = input(f"Digite qual dessas revendedoras você quer procurar: {revendas}").lower()
+  dataframeFiltrado = dfcombustiveisLower[dfcombustiveisLower['bandeira_revenda'] == revenda]
+  dataframeList = dataframeFiltrado.head().values.tolist()
+  print(f"\n DataFrame - filtrado por: {revenda}\n")
+  print(tabulate(dataframeList, headers=dfcombustiveis.columns, tablefmt='grid'))
+elif opcao == 4:
+  produtos = dfcombustiveisLower['produto'].unique()
+  produtos = produtos.tolist()
+  produtos = ", ".join(map(str,produtos))
+  produto = input(f"Digite qual desses combustíveis você quer procurar: {produtos} ").lower()
+  while produto not in produtos:
+    print("Produto inválido. Tente novamente.")
+    produto = input(f"Digite qual desses combustíveis você quer procurar: {produtos} ").lower()
+  dataframeFiltrado = dfcombustiveisLower[dfcombustiveisLower['produto'] == produto]
+  dataframeList = dataframeFiltrado.head().values.tolist()
+  print(f"\n DataFrame - filtrado por: {produto}\n")
+  print(tabulate(dataframeList, headers=dfcombustiveis.columns, tablefmt='grid'))
+elif opcao == 0:
+  print('Você saiu do programa, obrigado!!')
+ DataFrame - filtrado por: ipiranga
+
++-------+------------+--------------------+---------------+--------------------+------------------+---------------+
+|   ano | sigla_uf   | bandeira_revenda   | data_coleta   | produto            | unidade_medida   |   preco_venda |
++=======+============+====================+===============+====================+==================+===============+
+|  2021 | sp         | ipiranga           | 2021-01-01    | diesel             | r$/litro         |         3.899 |
++-------+------------+--------------------+---------------+--------------------+------------------+---------------+
+|  2021 | sp         | ipiranga           | 2021-01-01    | gasolina aditivada | r$/litro         |         4.499 |
++-------+------------+--------------------+---------------+--------------------+------------------+---------------+
+|  2021 | sp         | ipiranga           | 2021-01-01    | etanol             | r$/litro         |         3.099 |
++-------+------------+--------------------+---------------+--------------------+------------------+---------------+
+|  2021 | sp         | ipiranga           | 2021-01-01    | gasolina           | r$/litro         |         4.399 |
++-------+------------+--------------------+---------------+--------------------+------------------+---------------+
+|  2021 | sp         | ipiranga           | 2021-01-01    | gasolina aditivada | r$/litro         |         3.997 |
++-------+------------+--------------------+---------------+--------------------+------------------+---------------+
+DataFrame que foi filtrado:
+dataframeFiltrado
+ano	sigla_uf	bandeira_revenda	data_coleta	produto	unidade_medida	preco_venda
+18	2021	sp	ipiranga	2021-01-01	diesel	r$/litro	3.899
+38	2021	sp	ipiranga	2021-01-01	gasolina aditivada	r$/litro	4.499
+39	2021	sp	ipiranga	2021-01-01	etanol	r$/litro	3.099
+40	2021	sp	ipiranga	2021-01-01	gasolina	r$/litro	4.399
+77	2021	sp	ipiranga	2021-01-01	gasolina aditivada	r$/litro	3.997
+...	...	...	...	...	...	...	...
+325410	2021	sp	ipiranga	2021-01-31	gasolina aditivada	r$/litro	4.999
+325417	2021	sp	ipiranga	2021-01-31	diesel	r$/litro	3.799
+325418	2021	sp	ipiranga	2021-01-31	gasolina aditivada	r$/litro	4.799
+325419	2021	sp	ipiranga	2021-01-31	diesel	r$/litro	3.749
+325424	2021	sp	ipiranga	2021-01-31	gasolina	r$/litro	4.599
+40803 rows × 7 columns
+
+import os
+import xlwt
+from pandas.io.formats.excel import ExcelFormatter
+while True:
+  resposta = str(input("Você quer salvar o arquivo nos formatos xlsx e csv ? s/n ou qualquer teclas para finalizar...")).lower()
+  if resposta =='n':
+    print("Obrigado pela sua participação, agradeço que você não usou memoria da maquina para salvar o arquivo...... kkkkk")
+    break
+  elif resposta == 's':
+        diretorio_destino = str(input("Digite o nome da pasta que deseja salvar o arquivo ou digite download para salvar no diretorio padrão.")).lower()
+        if diretorio_destino == 'download':
+          print("Processando, aguarde......")   
+          diretorio_raiz = os.path.expanduser("~")
+          diretorio_destino = os.path.join(diretorio_raiz, 'Downloads')
+        elif diretorio_destino != 'download':
+          print("Processando, aguarde......")
+          diretorio_raiz = os.path.expanduser("~")
+          diretorio_destino = os.path.join(diretorio_raiz, diretorio_destino)
+        if not os.path.exists(diretorio_destino):
+          os.makedirs(diretorio_destino)
+        caminho_csv = os.path.join(diretorio_destino, 'dataframeCombustivel.csv')
+        dataframeFiltrado.to_csv(caminho_csv, index=False)
+        caminho_xlsx = os.path.join(diretorio_destino, 'dataframeCombustivel.xlsx')
+        dataframeFiltrado.to_excel(caminho_xlsx, index=False)
+        print(f"Arquivo salvo com sucesso.....no diretório: {diretorio_destino}")
+        break
+  else:
+    print("Opção inválida. Tente novamente.")
+Processando, aguarde......
+Arquivo salvo com sucesso.....no diretório: C:\Users\cs376562\bandeiraipiranga
